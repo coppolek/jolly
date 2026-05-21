@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isManager() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'email']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.role in ['employee', 'manager'] &&
+             data.email is string && data.email.size() <= 256 &&
+             (!('department' in data) || (data.department is string && data.department.size() <= 128)) &&
+             (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1024));
+    }
+
+    function isValidLeaveBalance(data) {
+      return data.keys().hasAll(['userId', 'vacation', 'sick', 'personal']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.vacation is number && data.vacation >= 0 &&
+             data.sick is number && data.sick >= 0 &&
+             data.personal is number && data.personal >= 0;
+    }
+
+    function isValidLeaveRequest(data) {
+      return data.keys().hasAll(['userId', 'startDate', 'endDate', 'type', 'status', 'requestedAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.startDate is string && data.startDate.size() <= 64 &&
+             data.endDate is string && data.endDate.size() <= 64 &&
+             data.type in ['vacation', 'sick', 'personal'] &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.requestedAt is string && data.requestedAt.size() <= 64 &&
+             (!('reason' in data) || (data.reason is string && data.reason.size() <= 1024));
+    }
+
+    function isValidWorker(data) {
+      return data.keys().hasAll(['id', 'firstName', 'lastName', 'role']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.firstName is string && data.firstName.size() <= 128 &&
+             data.lastName is string && data.lastName.size() <= 128 &&
+             data.role is string && data.role.size() <= 128 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 64)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 256)) &&
+             (!('fiscalCode' in data) || (data.fiscalCode is string && data.fiscalCode.size() <= 64)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 2048));
+    }
+
+    function isValidWorksite(data) {
+      return data.keys().hasAll(['id', 'name', 'active']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 256 &&
+             data.active is bool &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 512)) &&
+             (!('client' in data) || (data.client is string && data.client.size() <= 256)) &&
+             (!('assignments' in data) || data.assignments is list) &&
+             (!('lat' in data) || data.lat is number) &&
+             (!('lng' in data) || data.lng is number);
+    }
+
+    match /users/{userId} {
+      allow get: if isAuthenticated() && isValidId(userId);
+      allow list: if isAuthenticated();
+      // Allow user creation if it's their own ID. Role must be employee initially unless admin.
+      allow create: if isAuthenticated() && 
+                    isValidId(userId) && 
+                    userId == request.auth.uid && 
+                    isValidUser(incoming()) && 
+                    incoming().id == userId &&
+                    (incoming().role == 'employee' || incoming().email == 'coppolek@gmail.com');
+      // allow updates to avatar, name etc but not role.
+      allow update: if isAuthenticated() && 
+                    isValidId(userId) && 
+                    isValidUser(incoming()) && 
+                    userId == request.auth.uid &&
+                    incoming().role == existing().role &&
+                    incoming().email == existing().email &&
+                    incoming().id == existing().id;
+    }
+
+    match /balances/{userId} {
+      // Anyone can get their own balances. Managers can read all.
+      allow get: if isAuthenticated() && isValidId(userId) && (userId == request.auth.uid || isManager());
+      // Lists require a where clause, or manager role
+      allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isManager());
+      // Only managers can create/update
+      allow create: if isManager() && isValidId(userId) && isValidLeaveBalance(incoming()) && incoming().userId == userId;
+      allow update: if isManager() && isValidId(userId) && isValidLeaveBalance(incoming()) && incoming().userId == existing().userId;
+    }
+
+    match /workers/{workerId} {
+      allow read: if isAuthenticated();
+      allow create: if isManager() && isValidId(workerId) && isValidWorker(incoming()) && incoming().id == workerId;
+      allow update: if isManager() && isValidId(workerId) && isValidWorker(incoming()) && incoming().id == existing().id;
+      allow delete: if isManager() && isValidId(workerId);
+    }
+
+    match /worksites/{worksiteId} {
+      allow read: if isAuthenticated();
+      allow create: if isManager() && isValidId(worksiteId) && isValidWorksite(incoming()) && incoming().id == worksiteId;
+      allow update: if isManager() && isValidId(worksiteId) && isValidWorksite(incoming()) && incoming().id == existing().id;
+      allow delete: if isManager() && isValidId(worksiteId);
+    }
+
+    match /requests/{requestId} {
+      allow get: if isAuthenticated() && isValidId(requestId) && (existing().userId == request.auth.uid || isManager());
+      allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isManager());
+      
+      allow create: if isAuthenticated() && 
+                    isValidId(requestId) &&
+                    isValidLeaveRequest(incoming()) && 
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                    (
+                      (incoming().userId == request.auth.uid && incoming().status == 'pending') ||
+                      isManager()
+                    );
+                    
+      allow update: if isAuthenticated() && 
+                    isValidId(requestId) &&
+                    isValidLeaveRequest(incoming()) && 
+                    incoming().userId == existing().userId &&
+                    incoming().requestedAt == existing().requestedAt &&
+                    (
+                      // Manager approving/rejecting
+                      (isManager() && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) ||
+                      // User updating their own pending request
+                      (request.auth.uid == existing().userId && existing().status == 'pending' && incoming().status == 'pending' && incoming().diff(existing()).affectedKeys().hasOnly(['startDate', 'endDate', 'type', 'reason']))
+                    );
+                    
+      allow delete: if isAuthenticated() && isValidId(requestId) && (
+        (existing().userId == request.auth.uid && existing().status == 'pending') ||
+        isManager()
+      );
+    }
+  }
+}

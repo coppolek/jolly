@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and department.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["employee", "manager"] },
+        "department": { "type": "string" },
+        "avatar": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "email"]
+    },
+    "LeaveBalance": {
+      "title": "LeaveBalance",
+      "description": "Leave balances for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vacation": { "type": "number" },
+        "sick": { "type": "number" },
+        "personal": { "type": "number" }
+      },
+      "required": ["userId", "vacation", "sick", "personal"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "A request for time off.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "type": { "type": "string", "enum": ["vacation", "sick", "personal"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reason": { "type": "string" },
+        "requestedAt": { "type": "string" }
+      },
+      "required": ["userId", "startDate", "endDate", "type", "status", "requestedAt"]
+    },
+    "Worker": {
+      "title": "Worker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "fiscalCode": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "firstName", "lastName", "role"]
+    },
+    "Worksite": {
+      "title": "Worksite",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "client": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "name", "active"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/workers/{workerId}": {
+      "schema": { "$ref": "#/entities/Worker" },
+      "description": "Stores worker registry."
+    },
+    "/worksites/{worksiteId}": {
+      "schema": { "$ref": "#/entities/Worksite" },
+      "description": "Stores worksite registry."
+    },
+    "/balances/{userId}": {
+      "schema": { "$ref": "#/entities/LeaveBalance" },
+      "description": "Stores leave balances keyed by user ID."
+    },
+    "/requests/{requestId}": {
+      "schema": { "$ref": "#/entities/LeaveRequest" },
+      "description": "Stores leave requests."
+    }
+  }
+}
