@@ -48,7 +48,7 @@ export const RequestsView = () => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">ELENCO ASSENZE</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">

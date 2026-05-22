@@ -26,7 +26,7 @@ export const AnalyticsView = () => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">{t('analytics')}</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Data Insights & Trends</p>
@@ -34,7 +34,7 @@ export const AnalyticsView = () => {
       </div>
 
       <div className="flex-1 overflow-auto p-10 grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="border border-[#1A1A1A] flex flex-col bg-[#F7F3F0]">
+        <div className="border border-[#1A1A1A] flex flex-col bg-[white]">
           <div className="p-6 border-b border-[#1A1A1A] bg-white">
             <h2 className="text-xl font-serif italic tracking-tight">Leave Distribution</h2>
           </div>
@@ -62,7 +62,7 @@ export const AnalyticsView = () => {
           </div>
         </div>
 
-        <div className="border border-[#1A1A1A] flex flex-col bg-[#F7F3F0]">
+        <div className="border border-[#1A1A1A] flex flex-col bg-[white]">
           <div className="p-6 border-b border-[#1A1A1A] bg-white">
             <h2 className="text-xl font-serif italic tracking-tight">Monthly Trends</h2>
           </div>

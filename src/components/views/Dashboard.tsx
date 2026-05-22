@@ -25,7 +25,7 @@ export const Dashboard = ({ onNewRequest }: { onNewRequest: () => void }) => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">Piano Sostituzioni</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">
@@ -36,7 +36,7 @@ export const Dashboard = ({ onNewRequest }: { onNewRequest: () => void }) => {
           {currentUser.role === 'employee' && (
             <button 
               onClick={onNewRequest}
-              className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all"
+              className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all"
             >
               New Request +
             </button>
@@ -44,7 +44,7 @@ export const Dashboard = ({ onNewRequest }: { onNewRequest: () => void }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col bg-[#F7F3F0]">
+      <div className="flex-1 overflow-y-auto flex flex-col bg-[white]">
         <div className="flex-1">
           <SubstitutionsTable />
         </div>

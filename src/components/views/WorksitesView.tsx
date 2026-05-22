@@ -173,7 +173,7 @@ export const WorksitesView = () => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">Cantieri</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Luoghi di Lavoro e Assegnazioni</p>
@@ -208,13 +208,13 @@ export const WorksitesView = () => {
               />
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-2 border border-[#1A1A1A] bg-white text-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[#F7F3F0] transition-all flex items-center gap-2"
+                className="px-6 py-2 border border-[#1A1A1A] bg-white text-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[white] transition-all flex items-center gap-2"
               >
                 Importa CSV
               </button>
               <button 
                 onClick={handleAdd}
-                className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all flex items-center gap-2"
+                className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Aggiungi
               </button>
@@ -231,7 +231,7 @@ export const WorksitesView = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredWorksites.map(ws => (
-            <div key={ws.id} className="border border-[#1A1A1A] flex flex-col bg-[#F7F3F0] group relative hover:shadow-[4px_4px_0_0_rgba(26,26,26,1)] transition-all">
+            <div key={ws.id} className="border border-[#1A1A1A] flex flex-col bg-[white] group relative hover:shadow-[4px_4px_0_0_rgba(26,26,26,1)] transition-all">
               <div className="p-6 border-b border-[#1A1A1A] bg-white flex justify-between items-start">
                 <div>
                   <h3 className="text-xl font-bold uppercase tracking-tight">{ws.name}</h3>
@@ -292,9 +292,9 @@ export const WorksitesView = () => {
       </div>
 
       {isEditing && (
-        <div className="fixed inset-0 z-50 bg-[#F7F3F0]/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[white]/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
            <div className="bg-white border border-[#1A1A1A] w-full max-w-4xl shadow-[8px_8px_0_0_rgba(26,26,26,1)] flex flex-col my-8">
-             <div className="flex items-center justify-between px-8 py-6 border-b border-[#1A1A1A] bg-[#F7F3F0] sticky top-0 z-10">
+             <div className="flex items-center justify-between px-8 py-6 border-b border-[#1A1A1A] bg-[white] sticky top-0 z-10">
                <h2 className="text-2xl font-serif italic tracking-tighter">{currentWorksite.id ? 'Modifica Cantiere' : 'Nuovo Cantiere'}</h2>
                <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-[#1A1A1A] hover:text-white transition-colors">
                  <X className="w-5 h-5" />
@@ -324,7 +324,7 @@ export const WorksitesView = () => {
                  </div>
                  
                  <div className="pt-6 border-t border-[#1A1A1A]/10 mt-6 hidden md:block">
-                   <button type="submit" className="w-full py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
+                   <button type="submit" className="w-full py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
                      Salva Cantiere
                    </button>
                  </div>
@@ -352,7 +352,7 @@ export const WorksitesView = () => {
                    {currentWorksite.assignments?.map((ass, i) => (
                      <div 
                        key={i} 
-                       className="border border-[#1A1A1A] p-4 bg-[#F7F3F0] relative"
+                       className="border border-[#1A1A1A] p-4 bg-[white] relative"
                        onDragOver={handleDragOver}
                        onDrop={(e) => handleAssignmentDrop(e, i)}
                      >
@@ -415,7 +415,7 @@ export const WorksitesView = () => {
                  </div>
 
                  <div className="pt-6 border-t border-[#1A1A1A]/10 mt-6 md:hidden">
-                   <button type="submit" className="w-full py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
+                   <button type="submit" className="w-full py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
                      Salva Cantiere
                    </button>
                  </div>
@@ -427,12 +427,12 @@ export const WorksitesView = () => {
       )}
 
       {worksiteToDelete && (
-        <div className="fixed inset-0 z-50 bg-[#F7F3F0]/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[white]/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-[#1A1A1A] p-8 max-w-sm w-full shadow-[8px_8px_0_0_rgba(26,26,26,1)] text-center">
             <h3 className="text-2xl font-serif italic mb-2">Elimina Cantiere</h3>
             <p className="text-sm opacity-60 mb-8">Sei sicuro di voler eliminare questo cantiere? L'operazione non è reversibile.</p>
             <div className="flex gap-4 justify-center">
-              <button onClick={() => setWorksiteToDelete(null)} className="px-6 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#F7F3F0] transition-colors">
+              <button onClick={() => setWorksiteToDelete(null)} className="px-6 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[white] transition-colors">
                 Annulla
               </button>
               <button onClick={() => confirmDelete(worksiteToDelete)} className="px-6 py-2 border border-red-500 bg-red-500 text-white text-[10px] uppercase font-bold hover:bg-transparent hover:text-red-500 transition-colors">

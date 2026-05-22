@@ -1,7 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { GripVertical, Plus, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { format, addWeeks, subWeeks, startOfWeek, addDays } from 'date-fns';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { GripVertical, Plus, ChevronLeft, ChevronRight, Search, AlertCircle, Save } from 'lucide-react';
+import { format, addWeeks, subWeeks, startOfWeek, addDays, isWithinInterval, parseISO, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { useAppContext } from '../../store';
+import { toast } from 'sonner';
+import { db } from '../../firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 type DayCell = { text: string; ore: string };
 type OperatorRow = {
@@ -65,7 +69,7 @@ const initialData: OperatorBlock[] = [
 ];
 
 export const SubstitutionsTable = () => {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const { requests, workers, worksites, currentWeekStart, setCurrentWeekStart, addCoveredShiftId } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handlePrevWeek = () => setCurrentWeekStart(prev => subWeeks(prev, 1));
@@ -79,10 +83,16 @@ export const SubstitutionsTable = () => {
   const dynamicDays = dayNames.map((name, i) => {
     const date = addDays(currentWeekStart, i);
     return {
+      date,
       day: `${format(date, 'd')} ${name}`,
       key: dayKeys[i]
     };
   });
+
+  const weekId = format(currentWeekStart, 'yyyy-MM-dd');
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const isInitialLoadRef = useRef(true);
 
   const [tableData, setTableData] = useState<OperatorBlock[]>(() => {
     const extractTime = (text: string) => {
@@ -109,18 +119,55 @@ export const SubstitutionsTable = () => {
     });
   });
 
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    const unsub = onSnapshot(doc(db, 'jolly_plans', weekId), (docSnap) => {
+      if (docSnap.exists()) {
+        setTableData(docSnap.data().blocks);
+      } else {
+        setTableData(JSON.parse(JSON.stringify(initialData)));
+      }
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 500);
+    });
+    return () => unsub();
+  }, [weekId]);
+
+  const saveToFirestore = async (dataToSave: OperatorBlock[]) => {
+    try {
+      setIsSaving(true);
+      await setDoc(doc(db, 'jolly_plans', weekId), { blocks: dataToSave }, { merge: true });
+    } catch (err) {
+      console.error(err);
+      toast.error("Errore nel salvataggio");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateTableData = (newData: OperatorBlock[]) => {
+    setTableData(newData);
+    if (!isInitialLoadRef.current) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        saveToFirestore(newData);
+      }, 1000);
+    }
+  };
+
   const calculateHoursFromText = (text: string): string => {
     if (!text) return '';
-    const regex = /(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})/g;
+    const regex = /(\d{1,2})(?:[:.](\d{2}))?\s*-\s*(\d{1,2})(?:[:.](\d{2}))?/g;
     let totalHours = 0;
     let match;
     let found = false;
     while ((match = regex.exec(text)) !== null) {
       found = true;
       const startH = parseInt(match[1]);
-      const startM = parseInt(match[2]);
+      const startM = match[2] ? parseInt(match[2]) : 0;
       const endH = parseInt(match[3]);
-      const endM = parseInt(match[4]);
+      const endM = match[4] ? parseInt(match[4]) : 0;
       
       let diff = (endH + endM / 60) - (startH + startM / 60);
       if (diff < 0) diff += 24;
@@ -178,7 +225,7 @@ export const SubstitutionsTable = () => {
   const handleCellBlur = (blockIdx: number) => {
     const newData = [...tableData];
     newData[blockIdx] = sortBlock(recalculateBlockTotals(newData[blockIdx]));
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleCellChange = (blockIdx: number, rowIdx: number, dayKey: string, field: 'text' | 'ore', value: string) => {
@@ -196,7 +243,7 @@ export const SubstitutionsTable = () => {
     }
     
     newData[blockIdx] = recalculateBlockTotals(newData[blockIdx]);
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleTotalChange = (blockIdx: number, dayKey: string, value: string) => {
@@ -214,19 +261,19 @@ export const SubstitutionsTable = () => {
     }
     newData[blockIdx].totalWeek = weekTotal > 0 ? weekTotal.toString().replace('.', ',') : '';
 
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleNameChange = (blockIdx: number, value: string) => {
     const newData = [...tableData];
     newData[blockIdx].name = value;
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleTotalWeekChange = (blockIdx: number, value: string) => {
     const newData = [...tableData];
     newData[blockIdx].totalWeek = value;
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleAddRow = (blockIdx: number) => {
@@ -241,7 +288,7 @@ export const SubstitutionsTable = () => {
       sab: { text: '', ore: '' },
       dom: { text: '', ore: '' }
     });
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleAddJolly = () => {
@@ -262,7 +309,7 @@ export const SubstitutionsTable = () => {
         }
       ]
     });
-    setTableData(newData);
+    updateTableData(newData);
   };
 
   const handleCellDragStart = (e: React.DragEvent, blockIdx: number, rowIdx: number, dayKey: string) => {
@@ -305,15 +352,57 @@ export const SubstitutionsTable = () => {
           newData[targetBlockIdx] = recalculateBlockTotals({ ...newData[targetBlockIdx], rows: targetRows });
         }
         
-        setTableData(newData);
+        updateTableData(newData);
       }
     } catch (err) {}
+  };
+
+  const handleExternalCellDragStart = (e: React.DragEvent, text: string, ore: string, dayKey: string) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'external-cell', text, ore, dayKey }));
   };
 
   const handleCellDrop = (e: React.DragEvent, targetBlockIdx: number, targetRowIdx: number, targetDayKey: string) => {
     e.preventDefault();
     try {
       const source = JSON.parse(e.dataTransfer.getData('application/json'));
+      
+      if (source.type === 'external-cell') {
+         if (source.dayKey !== targetDayKey) {
+           toast.error("Puoi inserire questo turno solo nel giorno corrispondente all'assenza.");
+           return;
+         }
+         
+         const newData = [...tableData];
+         const targetRow = newData[targetBlockIdx].rows[targetRowIdx] as any;
+         
+         // If target already has something, we append or overwrite? Let's overwrite or append
+         if (targetRow[targetDayKey].text) {
+           targetRow[targetDayKey].text += `\n${source.text}`;
+           
+           const recalculated = calculateHoursFromText(targetRow[targetDayKey].text);
+           if (recalculated !== '') {
+             targetRow[targetDayKey].ore = recalculated;
+           } else {
+             const currOre = parseFloat(targetRow[targetDayKey].ore.replace(',', '.')) || 0;
+             const addOre = parseFloat(source.ore.replace(',', '.')) || 0;
+             if (currOre + addOre > 0) {
+               targetRow[targetDayKey].ore = (currOre + addOre).toString().replace('.', ',');
+             }
+           }
+         } else {
+           targetRow[targetDayKey].text = source.text;
+           const recalculated = calculateHoursFromText(source.text);
+           targetRow[targetDayKey].ore = recalculated !== '' ? recalculated : source.ore;
+         }
+         
+         newData[targetBlockIdx] = sortBlock(recalculateBlockTotals(newData[targetBlockIdx]));
+         updateTableData(newData);
+         if (source.id) {
+           addCoveredShiftId(source.id);
+         }
+         return;
+      }
+      
       if (source.type !== 'cell') return;
       
       if (source.blockIdx === targetBlockIdx && source.rowIdx === targetRowIdx && source.dayKey === targetDayKey) {
@@ -338,7 +427,7 @@ export const SubstitutionsTable = () => {
         newData[targetBlockIdx] = sortBlock(recalculateBlockTotals(newData[targetBlockIdx]));
       }
       
-      setTableData(newData);
+      updateTableData(newData);
     } catch (err) {
       // Ignore invalid drop
     }
@@ -363,44 +452,46 @@ export const SubstitutionsTable = () => {
   }, [tableData, searchTerm, dayKeys]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-white">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 bg-[#F7F3F0] border-b border-[#1A1A1A] gap-4">
-        <h2 className="text-3xl font-serif italic tracking-tighter">MESE DI RIFERIMENTO: {monthName}</h2>
-        
-        <div className="flex items-center gap-4 w-full md:w-auto flex-wrap">
-          <div className="relative flex-1 md:w-64 min-w-[200px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
-            <input 
-              type="text" 
-              placeholder="Cerca turno o jolly..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[#1A1A1A] bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
-            />
-          </div>
+    <div className="flex h-full w-full">
+      {/* Main Table Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white border-l border-[#1A1A1A]">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 bg-[white] border-b border-[#1A1A1A] gap-4">
+          <h2 className="text-2xl lg:text-3xl font-serif italic tracking-tighter">MESE DI RIFERIMENTO: {monthName}</h2>
           
-          <div className="flex items-center gap-4">
-            <button onClick={handlePrevWeek} className="p-2 border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-colors">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="font-mono text-xl tracking-widest font-bold hidden md:inline">SETTIMANA DEL {format(currentWeekStart, 'dd/MM/yyyy')}</span>
-            <span className="font-mono text-sm tracking-widest font-bold md:hidden">{format(currentWeekStart, 'dd/MM/yy')}</span>
-            <button onClick={handleNextWeek} className="p-2 border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-colors">
-              <ChevronRight className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-4 w-full md:w-auto flex-wrap">
+            <div className="relative flex-1 md:w-64 min-w-[200px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+              <input 
+                type="text" 
+                placeholder="Cerca turno o jolly..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-[#1A1A1A] bg-white text-sm focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+              />
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <button onClick={handlePrevWeek} className="p-2 border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-colors bg-white">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="font-mono text-xl tracking-widest font-bold hidden xl:inline">SETTIMANA DEL {format(currentWeekStart, 'dd/MM/yyyy')}</span>
+              <span className="font-mono text-sm tracking-widest font-bold xl:hidden">{format(currentWeekStart, 'dd/MM/yy')}</span>
+              <button onClick={handleNextWeek} className="p-2 border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-colors bg-white">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="w-full overflow-x-auto flex-1">
-        <table className="w-max min-w-full text-left border-collapse text-[10px]">
+        <div className="w-full overflow-x-auto flex-1">
+          <table className="w-max min-w-full text-left border-collapse text-[10px]">
         <tbody>
           {filteredTableData.map((block) => {
             const idx = tableData.findIndex(b => b === block);
             return (
               <React.Fragment key={idx}>
-              {idx > 0 && <tr><td colSpan={15} className="h-6 bg-[#F7F3F0] border-y border-[#1A1A1A]"></td></tr>}
+              {idx > 0 && <tr><td colSpan={15} className="h-6 bg-[white] border-y border-[#1A1A1A]"></td></tr>}
               
-              <tr className="bg-[#1A1A1A] text-[#F7F3F0] uppercase tracking-[0.2em] font-bold">
+              <tr className="bg-[#1A1A1A] text-[white] uppercase tracking-[0.2em] font-bold">
                 <td colSpan={15} className="px-4 py-2 border-b border-[#1A1A1A]">
                   <div className="flex justify-between w-full">
                     <div className="flex items-center gap-2">
@@ -482,7 +573,7 @@ export const SubstitutionsTable = () => {
                           />
                         </td>
                         <td 
-                          className="p-0 border-b border-r border-[#1A1A1A] text-center font-mono bg-[#F7F3F0] font-bold"
+                          className="p-0 border-b border-r border-[#1A1A1A] text-center font-mono bg-[white] font-bold"
                           onDragOver={handleDragOver}
                           onDrop={(e) => handleCellDrop(e, idx, rIdx, d.key)}
                         >
@@ -523,7 +614,7 @@ export const SubstitutionsTable = () => {
       </table>
       </div>
       
-      <div className="bg-[#1A1A1A] p-6 text-[#F7F3F0] flex justify-between items-center uppercase tracking-widest font-bold shrink-0">
+      <div className="bg-[#1A1A1A] p-6 text-[white] flex justify-between items-center uppercase tracking-widest font-bold shrink-0">
         <button
           onClick={handleAddJolly}
           className="flex items-center gap-2 px-4 py-2 bg-white text-[#1A1A1A] rounded hover:bg-gray-200 transition-colors"
@@ -546,6 +637,7 @@ export const SubstitutionsTable = () => {
             })()}
           </span>
         </div>
+      </div>
       </div>
     </div>
   );

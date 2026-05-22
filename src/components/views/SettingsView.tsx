@@ -27,7 +27,7 @@ export const SettingsView = () => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">{t('settings')}</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Configuration & Integrations</p>
@@ -35,7 +35,7 @@ export const SettingsView = () => {
       </div>
 
       <div className="flex-1 overflow-auto p-10">
-        <div className="max-w-4xl border border-[#1A1A1A] bg-[#F7F3F0] flex flex-col">
+        <div className="max-w-4xl border border-[#1A1A1A] bg-[white] flex flex-col">
           <div className="p-8 border-b border-[#1A1A1A] bg-white">
             <h2 className="text-xl font-serif italic flex items-center gap-3">
               <Database className="w-5 h-5" />
@@ -60,7 +60,7 @@ export const SettingsView = () => {
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Syncing...' : 'Force Sync'}

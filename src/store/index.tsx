@@ -4,7 +4,8 @@ import { Language } from '../i18n';
 import { toast } from 'sonner';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { collection, doc, setDoc, getDoc, onSnapshot, query, addDoc, updateDoc, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { format, startOfWeek } from 'date-fns';
+import { collection, doc, setDoc, getDoc, onSnapshot, query, addDoc, updateDoc, where, getDocs, deleteDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 
 interface AppState {
   language: Language;
@@ -30,6 +31,10 @@ interface AppState {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   isLoadingAuth: boolean;
+  currentWeekStart: Date;
+  setCurrentWeekStart: (date: Date | ((prev: Date) => Date)) => void;
+  coveredShiftIds: string[];
+  addCoveredShiftId: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -43,6 +48,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [worksites, setWorksites] = useState<Worksite[]>([]);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [coveredShiftIds, setCoveredShiftIds] = useState<string[]>([]);
+
+  const addCoveredShiftId = async (id: string) => {
+    // Optimistic update
+    setCoveredShiftIds(prev => {
+      if (!prev.includes(id)) return [...prev, id];
+      return prev;
+    });
+    
+    // Save to Firestore for persistency over reload
+    try {
+      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+      const weekId = `week_${weekStartStr}`;
+      const docRef = doc(db, 'jolly_plans', weekId);
+      await setDoc(docRef, { coveredShiftIds: arrayUnion(id) }, { merge: true });
+    } catch (e) {
+      console.error("Failed to persist coveredShiftId:", e);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -107,6 +132,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       unsubRequests();
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+    const weekId = `week_${weekStartStr}`;
+    const unsubJolly = onSnapshot(doc(db, 'jolly_plans', weekId), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().coveredShiftIds) {
+        setCoveredShiftIds(docSnap.data().coveredShiftIds);
+      } else {
+        setCoveredShiftIds([]);
+      }
+    });
+    return () => unsubJolly();
+  }, [currentUser, currentWeekStart]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -281,7 +320,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         syncWithHR,
         login,
         logout,
-        isLoadingAuth
+        isLoadingAuth,
+        currentWeekStart,
+        setCurrentWeekStart,
+        coveredShiftIds,
+        addCoveredShiftId
       }}
     >
       {children}

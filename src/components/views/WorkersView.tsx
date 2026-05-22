@@ -106,7 +106,7 @@ export const WorkersView = () => {
 
   return (
     <section className="flex-1 flex flex-col h-full bg-white">
-      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[#F7F3F0] shrink-0">
+      <div className="p-10 border-b border-[#1A1A1A] flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-[white] shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">Lavoratori</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Anagrafica Personale</p>
@@ -133,13 +133,13 @@ export const WorkersView = () => {
               />
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-2 border border-[#1A1A1A] bg-white text-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[#F7F3F0] transition-all flex items-center gap-2"
+                className="px-6 py-2 border border-[#1A1A1A] bg-white text-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[white] transition-all flex items-center gap-2"
               >
                 Importa CSV
               </button>
               <button 
                 onClick={handleAdd}
-                className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all flex items-center gap-2"
+                className="px-6 py-2 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Aggiungi
               </button>
@@ -154,7 +154,7 @@ export const WorkersView = () => {
             const workerWorksites = worksites.filter(ws => ws.assignments?.some(a => worker.allIds.includes(a.workerId)));
             
             return (
-            <div key={worker.id} className="border border-[#1A1A1A] bg-[#F7F3F0] p-6 flex flex-col group relative">
+            <div key={worker.id} className="border border-[#1A1A1A] bg-[white] p-6 flex flex-col group relative">
               <div className="mb-4">
                 <p className="text-[10px] uppercase tracking-widest opacity-50 mb-1">{worker.role}</p>
                 <h3 className="text-xl font-bold uppercase">{worker.lastName} {worker.firstName}</h3>
@@ -200,9 +200,9 @@ export const WorkersView = () => {
       </div>
 
       {isEditing && (
-        <div className="fixed inset-0 z-50 bg-[#F7F3F0]/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[white]/90 backdrop-blur-sm flex items-center justify-center p-4">
            <div className="bg-white border border-[#1A1A1A] w-full max-w-lg shadow-[8px_8px_0_0_rgba(26,26,26,1)] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-             <div className="flex items-center justify-between px-8 py-6 border-b border-[#1A1A1A] bg-[#F7F3F0]">
+             <div className="flex items-center justify-between px-8 py-6 border-b border-[#1A1A1A] bg-[white]">
                <h2 className="text-2xl font-serif italic tracking-tighter">{currentWorker.id ? 'Modifica Lavoratore' : 'Nuovo Lavoratore'}</h2>
                <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-[#1A1A1A] hover:text-white transition-colors">
                  <X className="w-5 h-5" />
@@ -250,7 +250,7 @@ export const WorkersView = () => {
                </div>
 
                <div className="pt-6 flex justify-end">
-                 <button type="submit" className="px-8 py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[#F7F3F0] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
+                 <button type="submit" className="px-8 py-3 border border-[#1A1A1A] bg-[#1A1A1A] text-[white] text-[10px] uppercase tracking-widest font-bold hover:bg-transparent hover:text-[#1A1A1A] transition-all">
                    Salva
                  </button>
                </div>
@@ -260,12 +260,12 @@ export const WorkersView = () => {
       )}
 
       {workerToDelete && (
-        <div className="fixed inset-0 z-50 bg-[#F7F3F0]/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[white]/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-[#1A1A1A] p-8 max-w-sm w-full shadow-[8px_8px_0_0_rgba(26,26,26,1)] text-center">
             <h3 className="text-2xl font-serif italic mb-2">Elimina Lavoratore</h3>
             <p className="text-sm opacity-60 mb-8">Sei sicuro di voler eliminare questo lavoratore? L'operazione non è reversibile.</p>
             <div className="flex gap-4 justify-center">
-              <button onClick={() => setWorkerToDelete(null)} className="px-6 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#F7F3F0] transition-colors">
+              <button onClick={() => setWorkerToDelete(null)} className="px-6 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[white] transition-colors">
                 Annulla
               </button>
               <button onClick={() => confirmDelete(workerToDelete)} className="px-6 py-2 border border-red-500 bg-red-500 text-white text-[10px] uppercase font-bold hover:bg-transparent hover:text-red-500 transition-colors">

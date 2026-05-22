@@ -152,5 +152,10 @@ service cloud.firestore {
         isManager()
       );
     }
+
+    match /jolly_plans/{weekId} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
   }
 }

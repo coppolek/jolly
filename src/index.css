@@ -1,14 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-brand-bg: #F7F3F0;
+  --color-brand-bg: white;
   --color-brand-dark: #1A1A1A;
   --color-brand-accent: #EAE3DC;
   
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Arial", sans-serif;
+  --font-mono: "Arial", sans-serif;
+  --font-serif: "Arial", sans-serif;
 }
 
 @layer base {

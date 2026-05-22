@@ -31,7 +31,7 @@ export const Topbar = ({ activeTab, setActiveTab }: TopbarProps) => {
   };
 
   return (
-    <header className="h-24 border-b border-[#1A1A1A] flex items-center justify-between px-10 bg-[#F7F3F0] z-10 shrink-0">
+    <header className="h-24 border-b border-[#1A1A1A] flex items-center justify-between px-10 bg-white z-10 shrink-0">
       <div className="flex items-baseline gap-4">
         <h1 className="text-4xl font-serif italic font-bold tracking-tighter">LV<span className="opacity-40">|</span>Pro</h1>
         <span className="text-[10px] uppercase tracking-[0.2em] opacity-60 font-semibold hidden md:inline">Multiservizi Management</span>

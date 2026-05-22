@@ -35,21 +35,21 @@ export const CalendarView = () => {
   };
 
   return (
-    <section className="flex-1 flex flex-col h-full bg-[#F7F3F0]">
+    <section className="flex-1 flex flex-col h-full bg-[white]">
       <div className="p-10 border-b border-[#1A1A1A] flex justify-between items-end shrink-0">
         <div>
           <h2 className="text-5xl font-serif italic tracking-tighter">{t('calendar')}</h2>
           <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Team Availability Overview</p>
         </div>
         <div className="flex gap-4 items-center">
-          <button onClick={prevMonth} className="px-4 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[#F7F3F0] transition-colors">Prev</button>
+          <button onClick={prevMonth} className="px-4 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[white] transition-colors">Prev</button>
           <span className="text-sm font-serif italic min-w-[120px] text-center">{format(currentDate, 'MMMM yyyy')}</span>
-          <button onClick={nextMonth} className="px-4 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[#F7F3F0] transition-colors">Next</button>
+          <button onClick={nextMonth} className="px-4 py-2 border border-[#1A1A1A] text-[10px] uppercase font-bold hover:bg-[#1A1A1A] hover:text-[white] transition-colors">Next</button>
         </div>
       </div>
 
       <div className="flex-1 px-10 py-10 overflow-auto bg-white flex justify-center">
-        <div className="w-full max-w-4xl border border-[#1A1A1A] bg-[#F7F3F0]">
+        <div className="w-full max-w-4xl border border-[#1A1A1A] bg-[white]">
           <div className="grid grid-cols-7 border-b border-[#1A1A1A]">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
               <div key={day} className={`py-4 text-center text-[10px] uppercase tracking-widest font-bold opacity-60 ${i < 6 ? 'border-r border-[#1A1A1A]' : ''}`}>
@@ -74,14 +74,14 @@ export const CalendarView = () => {
                     "p-3 flex flex-col border-b border-[#1A1A1A]",
                     !isColEnd && "border-r",
                     !isSameMonth(day, currentDate) && "opacity-20 bg-[#EAE3DC]",
-                    status === 'approved' && "bg-[#1A1A1A] text-[#F7F3F0]",
+                    status === 'approved' && "bg-[#1A1A1A] text-[white]",
                     status === 'pending' && "bg-[#EAE3DC]"
                   )}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={clsx(
                       "text-sm font-bold",
-                      isToday(day) && status !== 'approved' && "bg-[#1A1A1A] text-[#F7F3F0] px-2 py-0.5"
+                      isToday(day) && status !== 'approved' && "bg-[#1A1A1A] text-[white] px-2 py-0.5"
                     )}>
                       {format(day, 'd')}
                     </span>
