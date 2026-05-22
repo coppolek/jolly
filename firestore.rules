@@ -10,7 +10,10 @@ service cloud.firestore {
     }
 
     function isManager() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager';
+      return isAuthenticated() && (
+        (request.auth.token.email in ['admin@admin.com', 'coppolek@gmail.com']) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager')
+      );
     }
 
     function incoming() {

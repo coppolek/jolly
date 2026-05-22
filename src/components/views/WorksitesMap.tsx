@@ -5,8 +5,11 @@ import { Worksite } from '../../types';
 import { useGeocodeWorksites } from './WorksitesMapHelper';
 
 // Fix Leaflet's default icon path issues with webpack/vite
+// @ts-ignore
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
+// @ts-ignore
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+// @ts-ignore
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
 const DefaultIcon = L.icon({

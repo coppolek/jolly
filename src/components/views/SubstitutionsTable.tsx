@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { GripVertical, Plus, ChevronLeft, ChevronRight, Search, AlertCircle, Save } from 'lucide-react';
+import { GripVertical, Plus, ChevronLeft, ChevronRight, Search, AlertCircle, Save, Trash2 } from 'lucide-react';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, isWithinInterval, parseISO, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useAppContext } from '../../store';
@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
-type DayCell = { text: string; ore: string };
+type DayCell = { text: string; ore: string; shiftIds?: string[] };
 type OperatorRow = {
   lun: DayCell;
   mar: DayCell;
@@ -69,7 +69,7 @@ const initialData: OperatorBlock[] = [
 ];
 
 export const SubstitutionsTable = () => {
-  const { requests, workers, worksites, currentWeekStart, setCurrentWeekStart, addCoveredShiftId } = useAppContext();
+  const { requests, workers, worksites, currentWeekStart, setCurrentWeekStart, addCoveredShiftId, removeCoveredShiftIds } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handlePrevWeek = () => setCurrentWeekStart(prev => subWeeks(prev, 1));
@@ -231,6 +231,13 @@ export const SubstitutionsTable = () => {
   const handleCellChange = (blockIdx: number, rowIdx: number, dayKey: string, field: 'text' | 'ore', value: string) => {
     const newData = [...tableData];
     const row = newData[blockIdx].rows[rowIdx] as any;
+    
+    // Se stiamo svuotando il testo, rimuoviamo i shift coperti
+    if (field === 'text' && value.trim() === '' && row[dayKey].shiftIds && row[dayKey].shiftIds.length > 0) {
+      removeCoveredShiftIds(row[dayKey].shiftIds);
+      row[dayKey].shiftIds = [];
+    }
+
     row[dayKey][field] = value;
     
     if (field === 'text') {
@@ -288,6 +295,66 @@ export const SubstitutionsTable = () => {
       sab: { text: '', ore: '' },
       dom: { text: '', ore: '' }
     });
+    updateTableData(newData);
+  };
+
+  const handleDeleteRow = (blockIdx: number, rowIdx: number) => {
+    const newData = [...tableData];
+    const rowToDelete = newData[blockIdx].rows[rowIdx];
+    
+    // Collect all shiftIds from the row to delete
+    let shiftIdsToRemove: string[] = [];
+    dayKeys.forEach(dk => {
+      const cell = (rowToDelete as any)[dk];
+      if (cell && cell.shiftIds && cell.shiftIds.length > 0) {
+        shiftIdsToRemove = [...shiftIdsToRemove, ...cell.shiftIds];
+      }
+    });
+
+    if (shiftIdsToRemove.length > 0) {
+      removeCoveredShiftIds(shiftIdsToRemove);
+    }
+
+    newData[blockIdx] = { ...newData[blockIdx], rows: [...newData[blockIdx].rows] };
+    newData[blockIdx].rows.splice(rowIdx, 1);
+    
+    // Assicurati che ci sia sempre almeno una riga
+    if (newData[blockIdx].rows.length === 0) {
+      newData[blockIdx].rows.push({
+        lun: { text: '', ore: '' },
+        mar: { text: '', ore: '' },
+        mer: { text: '', ore: '' },
+        gio: { text: '', ore: '' },
+        ven: { text: '', ore: '' },
+        sab: { text: '', ore: '' },
+        dom: { text: '', ore: '' }
+      });
+    }
+    
+    newData[blockIdx] = recalculateBlockTotals(newData[blockIdx]);
+    updateTableData(newData);
+  };
+
+  const handleDeleteBlock = (blockIdx: number) => {
+    if (!window.confirm("Sei sicuro di voler eliminare questo blocco e tutti i suoi turni?")) return;
+    
+    const blockToDelete = tableData[blockIdx];
+    let shiftIdsToRemove: string[] = [];
+    blockToDelete.rows.forEach(row => {
+      dayKeys.forEach(dk => {
+        const cell = (row as any)[dk];
+        if (cell && cell.shiftIds && cell.shiftIds.length > 0) {
+          shiftIdsToRemove = [...shiftIdsToRemove, ...cell.shiftIds];
+        }
+      });
+    });
+
+    if (shiftIdsToRemove.length > 0) {
+      removeCoveredShiftIds(shiftIdsToRemove);
+    }
+
+    const newData = [...tableData];
+    newData.splice(blockIdx, 1);
     updateTableData(newData);
   };
 
@@ -378,6 +445,9 @@ export const SubstitutionsTable = () => {
          // If target already has something, we append or overwrite? Let's overwrite or append
          if (targetRow[targetDayKey].text) {
            targetRow[targetDayKey].text += `\n${source.text}`;
+           if (source.id) {
+             targetRow[targetDayKey].shiftIds = [...(targetRow[targetDayKey].shiftIds || []), source.id];
+           }
            
            const recalculated = calculateHoursFromText(targetRow[targetDayKey].text);
            if (recalculated !== '') {
@@ -391,6 +461,9 @@ export const SubstitutionsTable = () => {
            }
          } else {
            targetRow[targetDayKey].text = source.text;
+           if (source.id) {
+             targetRow[targetDayKey].shiftIds = [source.id];
+           }
            const recalculated = calculateHoursFromText(source.text);
            targetRow[targetDayKey].ore = recalculated !== '' ? recalculated : source.ore;
          }
@@ -415,12 +488,15 @@ export const SubstitutionsTable = () => {
       
       const tempText = targetRow[targetDayKey].text;
       const tempOre = targetRow[targetDayKey].ore;
+      const tempShiftIds = targetRow[targetDayKey].shiftIds;
       
       targetRow[targetDayKey].text = sourceRow[source.dayKey].text;
       targetRow[targetDayKey].ore = sourceRow[source.dayKey].ore;
+      targetRow[targetDayKey].shiftIds = sourceRow[source.dayKey].shiftIds;
       
       sourceRow[source.dayKey].text = tempText;
       sourceRow[source.dayKey].ore = tempOre;
+      sourceRow[source.dayKey].shiftIds = tempShiftIds;
       
       newData[source.blockIdx] = sortBlock(recalculateBlockTotals(newData[source.blockIdx]));
       if (source.blockIdx !== targetBlockIdx) {
@@ -502,7 +578,15 @@ export const SubstitutionsTable = () => {
                         className="bg-transparent border-b border-gray-600 focus:outline-none focus:border-white w-16 px-1 text-center font-bold" 
                       />
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => handleDeleteBlock(idx)}
+                        className="flex items-center justify-center gap-1 bg-red-500/80 hover:bg-red-600 transition-colors px-2 py-1 rounded text-[10px] text-white"
+                        title="Elimina blocco"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">ELIMINA BLOCCO</span>
+                      </button>
                       <button 
                         onClick={() => handleAddRow(idx)}
                         className="flex items-center justify-center gap-1 bg-white/10 hover:bg-white/20 transition-colors px-2 py-1 rounded text-[10px]"
@@ -514,7 +598,7 @@ export const SubstitutionsTable = () => {
                       <input 
                         value={block.name} 
                         onChange={(e) => handleNameChange(idx, e.target.value)} 
-                        className="bg-transparent text-right border-b border-gray-600 focus:outline-none focus:border-white w-64 px-1" 
+                        className="bg-transparent text-right border-b border-gray-600 focus:outline-none focus:border-white w-56 md:w-64 px-1" 
                       />
                     </div>
                   </div>
@@ -539,13 +623,22 @@ export const SubstitutionsTable = () => {
                   onDrop={(e) => handleRowDrop(e, idx, rIdx)}
                 >
                   <td className="w-8 border-b border-r border-[#1A1A1A] text-center align-middle">
-                    <div 
-                      className="cursor-grab active:cursor-grabbing p-1 inline-block opacity-50 hover:opacity-100"
-                      draggable
-                      onDragStart={(e) => handleRowDragStart(e, idx, rIdx)}
-                      title="Trascina riga"
-                    >
-                      <GripVertical className="w-4 h-4 text-[#1A1A1A]" />
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      <div 
+                        className="cursor-grab active:cursor-grabbing p-1 inline-block opacity-50 hover:opacity-100"
+                        draggable
+                        onDragStart={(e) => handleRowDragStart(e, idx, rIdx)}
+                        title="Trascina riga"
+                      >
+                        <GripVertical className="w-4 h-4 text-[#1A1A1A]" />
+                      </div>
+                      <button
+                        onClick={() => handleDeleteRow(idx, rIdx)}
+                        className="p-1 inline-block opacity-50 hover:opacity-100 hover:text-red-600 transition-colors"
+                        title="Elimina riga"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </td>
                   {dynamicDays.map((d, cIdx) => {

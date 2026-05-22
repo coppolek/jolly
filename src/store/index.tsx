@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { format, startOfWeek } from 'date-fns';
-import { collection, doc, setDoc, getDoc, onSnapshot, query, addDoc, updateDoc, where, getDocs, deleteDoc, writeBatch, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, onSnapshot, query, addDoc, updateDoc, where, getDocs, deleteDoc, writeBatch, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 interface AppState {
   language: Language;
@@ -35,6 +35,7 @@ interface AppState {
   setCurrentWeekStart: (date: Date | ((prev: Date) => Date)) => void;
   coveredShiftIds: string[];
   addCoveredShiftId: (id: string) => void;
+  removeCoveredShiftIds: (ids: string[]) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -66,6 +67,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       await setDoc(docRef, { coveredShiftIds: arrayUnion(id) }, { merge: true });
     } catch (e) {
       console.error("Failed to persist coveredShiftId:", e);
+    }
+  };
+
+  const removeCoveredShiftIds = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    
+    setCoveredShiftIds(prev => prev.filter(id => !ids.includes(id)));
+    
+    try {
+      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+      const weekId = `week_${weekStartStr}`;
+      const docRef = doc(db, 'jolly_plans', weekId);
+      await setDoc(docRef, { coveredShiftIds: arrayRemove(...ids) }, { merge: true });
+    } catch (e) {
+      console.error("Failed to remove coveredShiftIds:", e);
     }
   };
 
@@ -102,6 +118,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    if (currentUser?.role === 'manager') {
+      if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     if (!currentUser) return;
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
@@ -121,7 +145,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       ? collection(db, 'requests') 
       : query(collection(db, 'requests'), where('userId', '==', currentUser.id));
 
-    const unsubRequests = onSnapshot(requestsQuery, (snap) => {
+    let isInitialRequestsLoad = true;
+    const unsubRequests = onSnapshot(requestsQuery, async (snap) => {
+      if (!isInitialRequestsLoad && currentUser.role === 'manager') {
+        for (const change of snap.docChanges()) {
+          if (change.type === 'added') {
+            const req = change.doc.data() as LeaveRequest;
+            if (req.status === 'pending' && req.userId !== currentUser.id) {
+              const body = `Ha richiesto ${req.type} dal ${req.startDate} al ${req.endDate}.`;
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Nuova Richiesta di Ferie/Permesso', { body });
+              } else {
+                 toast('Nuova Richiesta', { description: body, icon: '🔔' });
+              }
+            }
+          }
+        }
+      }
+      isInitialRequestsLoad = false;
       setRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveRequest)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'requests'));
 
@@ -346,7 +387,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         currentWeekStart,
         setCurrentWeekStart,
         coveredShiftIds,
-        addCoveredShiftId
+        addCoveredShiftId,
+        removeCoveredShiftIds
       }}
     >
       {children}

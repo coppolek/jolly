@@ -17,11 +17,29 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
   const [isBalanceOpen, setIsBalanceOpen] = useState(true);
   const [isUpdatesOpen, setIsUpdatesOpen] = useState(true);
   const [isAssenzeOpen, setIsAssenzeOpen] = useState(true);
+  const [isAssenzeListOpen, setIsAssenzeListOpen] = useState(true);
 
   const userBalance = balances.find(b => b.userId === currentUser.id);
 
   const dayNames = ['LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA'];
   const dayKeys = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'] as const;
+
+  const absencesThisWeek = useMemo(() => {
+    const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
+    
+    return requests
+      .filter(req => req.status !== 'rejected')
+      .map(req => {
+        const worker = workers.find(w => w.id === req.userId);
+        return { req, worker };
+      })
+      .filter(({ req, worker }) => {
+        if (!worker) return false;
+        if (req.endDate < weekStartStr || req.startDate > weekEndStr) return false;
+        return true;
+      });
+  }, [requests, workers, currentWeekStart]);
 
   const dynamicDays = useMemo(() => dayNames.map((name, i) => {
     const date = addDays(currentWeekStart, i);
@@ -59,13 +77,11 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
           .map(a => ({ worksite: ws, schedule: a.schedule }))
       );
 
-      if (assignments.length === 0) return;
-
       const reqStart = parseISO(req.startDate);
       const reqEnd = parseISO(req.endDate);
       
       let currDate = reqStart;
-      while (currDate <= reqEnd) {
+      while (format(currDate, 'yyyy-MM-dd') <= format(reqEnd, 'yyyy-MM-dd')) {
         const dateStr = format(currDate, 'yyyy-MM-dd');
         
         // Only include shifts in the current week view!
@@ -76,53 +92,54 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
 
         const dKey = dayKeys[currDate.getDay() === 0 ? 6 : currDate.getDay() - 1]; // 0 is Sunday
         
-        assignments.forEach(assigned => {
-          const shiftText = assigned.schedule[dKey] || '';
-          console.log(`Checking ${dateStr} (${dKey}) for ${worker.lastName} at ${assigned.worksite.name}: "${shiftText}"`);
-          
-          if (shiftText.trim() !== '') {
-             let calculatedOre = '';
-             let formattedTimeRanges: string[] = [];
-             const regex = /(\d{1,2})(?:[:.](\d{2}))?\s*-\s*(\d{1,2})(?:[:.](\d{2}))?/g;
-             let totalHours = 0;
-             let match;
-             let found = false;
-             while ((match = regex.exec(shiftText)) !== null) {
-               found = true;
-               const startH = parseInt(match[1]);
-               const startM = match[2] ? parseInt(match[2]) : 0;
-               const endH = parseInt(match[3]);
-               const endM = match[4] ? parseInt(match[4]) : 0;
-               let diff = (endH + endM / 60) - (startH + startM / 60);
-               if (diff < 0) diff += 24;
-               totalHours += diff;
-
-               const formattedStartH = startH.toString().padStart(2, '0');
-               const formattedStartM = startM.toString().padStart(2, '0');
-               const formattedEndH = endH.toString().padStart(2, '0');
-               const formattedEndM = endM.toString().padStart(2, '0');
-               formattedTimeRanges.push(`${formattedStartH}:${formattedStartM}-${formattedEndH}:${formattedEndM}`);
-             }
-             if (found) {
-               calculatedOre = totalHours.toString().replace('.', ',');
-             }
-
-             const finalTimeRanges = formattedTimeRanges.length > 0 ? formattedTimeRanges.join('\n') : shiftText;
+        if (assignments.length > 0) {
+           assignments.forEach(assigned => {
+             const shiftText = assigned.schedule[dKey] || '';
              
-             // Check if it's already covered
-             const shiftId = `${req.id}-${assigned.worksite.id}-${dKey}-${dateStr}`;
+             if (shiftText.trim() !== '') {
+                let calculatedOre = '';
+                let formattedTimeRanges: string[] = [];
+                const regex = /(\d{1,2})(?:[:.](\d{2}))?\s*-\s*(\d{1,2})(?:[:.](\d{2}))?/g;
+                let totalHours = 0;
+                let match;
+                let found = false;
+                while ((match = regex.exec(shiftText)) !== null) {
+                  found = true;
+                  const startH = parseInt(match[1]);
+                  const startM = match[2] ? parseInt(match[2]) : 0;
+                  const endH = parseInt(match[3]);
+                  const endM = match[4] ? parseInt(match[4]) : 0;
+                  let diff = (endH + endM / 60) - (startH + startM / 60);
+                  if (diff < 0) diff += 24;
+                  totalHours += diff;
 
-             shifts.push({
-               id: shiftId,
-               workerName: `${worker.lastName} ${worker.firstName}`,
-               worksiteName: assigned.worksite.name,
-               date: currDate,
-               dayKey: dKey,
-               timeRanges: finalTimeRanges,
-               ore: calculatedOre
-             });
-          }
-        });
+                  const formattedStartH = startH.toString().padStart(2, '0');
+                  const formattedStartM = startM.toString().padStart(2, '0');
+                  const formattedEndH = endH.toString().padStart(2, '0');
+                  const formattedEndM = endM.toString().padStart(2, '0');
+                  formattedTimeRanges.push(`${formattedStartH}:${formattedStartM}-${formattedEndH}:${formattedEndM}`);
+                }
+                if (found) {
+                  calculatedOre = totalHours.toString().replace('.', ',');
+                }
+
+                const finalTimeRanges = formattedTimeRanges.length > 0 ? formattedTimeRanges.join('\n') : shiftText;
+                
+                // Check if it's already covered
+                const shiftId = `${req.id}-${assigned.worksite.id}-${dKey}-${dateStr}`;
+
+                shifts.push({
+                  id: shiftId,
+                  workerName: `${worker.lastName} ${worker.firstName}`,
+                  worksiteName: assigned.worksite.name,
+                  date: currDate,
+                  dayKey: dKey,
+                  timeRanges: finalTimeRanges,
+                  ore: calculatedOre
+                });
+             }
+           });
+        }
         currDate = addDays(currDate, 1);
       }
     });
@@ -202,7 +219,50 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
         )}
       </div>
 
-      {activeTab === 'dashboard' && (
+      {activeTab === 'dashboard' && currentUser?.role === 'manager' && (
+      <div className="flex flex-col shrink-0 border-b border-[#1A1A1A] bg-gray-50">
+        <button 
+          onClick={() => setIsAssenzeListOpen(!isAssenzeListOpen)}
+          className="p-8 pb-4 flex justify-between items-center w-full text-left"
+        >
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] uppercase tracking-widest opacity-50 m-0">Assenti in Settimana</p>
+            <span className="bg-black text-white px-2 py-0.5 rounded-full text-[9px] font-bold">
+              {absencesThisWeek.length}
+            </span>
+          </div>
+          {isAssenzeListOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+        </button>
+        {isAssenzeListOpen && (
+          <div className="px-8 pb-8 space-y-4 max-h-[300px] overflow-y-auto">
+            {absencesThisWeek.length === 0 ? (
+              <div className="text-center opacity-50 py-4">
+                <p className="text-[10px] uppercase font-bold tracking-widest">Tutti Presenti</p>
+              </div>
+            ) : (
+              absencesThisWeek.map(({ req, worker }) => (
+                <div key={`${req.id}-abs`} className="border border-[#1A1A1A] bg-white p-3 space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-[#1A1A1A]">
+                    {worker?.lastName} {worker?.firstName}
+                  </div>
+                  <div className="text-[9px] uppercase opacity-70">
+                    Dal {format(parseISO(req.startDate), 'dd/MM')} al {format(parseISO(req.endDate), 'dd/MM')}
+                  </div>
+                  <div className="text-[10px] bg-gray-100 p-2 inline-block rounded uppercase tracking-widest font-bold">
+                    {t(req.type)}
+                  </div>
+                  {req.status === 'pending' && (
+                    <div className="text-[9px] font-bold text-yellow-600 uppercase">Da approvare</div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+      )}
+
+      {activeTab === 'dashboard' && currentUser?.role === 'manager' && (
       <div className="flex flex-col shrink-0 border-b border-[#1A1A1A] bg-white">
         <button 
           onClick={() => setIsAssenzeOpen(!isAssenzeOpen)}
