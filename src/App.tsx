@@ -86,7 +86,6 @@ function AppContent() {
       
       {isLeaveFormOpen && <LeaveForm onClose={() => setIsLeaveFormOpen(false)} />}
       
-      <Toaster position="top-right" richColors />
     </div>
   );
 }
@@ -95,6 +94,7 @@ export default function App() {
   return (
     <AppProvider>
       <AppContent />
+      <Toaster position="top-right" richColors />
     </AppProvider>
   );
 }

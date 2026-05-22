@@ -161,7 +161,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (e: any) {
-      toast.error(e.message || 'Errore durante il login');
+      if (e.code === 'auth/unauthorized-domain') {
+        toast.error('Errore dominio non autorizzato: Vai su Firebase > Authentication > Settings > Authorized domains e aggiungi l\'IP della tua VPS!', { duration: 8000 });
+      } else if (e.code === 'auth/operation-not-allowed') {
+        toast.error('Errore Email/Password disabilitato: Vai su Firebase > Authentication > Sign-in method e abilita Email/password!', { duration: 8000 });
+      } else if (e.code === 'auth/invalid-credential' || e.code === 'auth/email-already-in-use') {
+        toast.error('Credenziali errate (Password sbagliata o account non trovato).');
+      } else {
+        toast.error(e.message || 'Errore durante il login');
+        console.error("Login Error:", e);
+      }
     }
   };
 
