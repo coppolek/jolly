@@ -87,7 +87,7 @@ service cloud.firestore {
                     userId == request.auth.uid && 
                     isValidUser(incoming()) && 
                     incoming().id == userId &&
-                    (incoming().role == 'employee' || incoming().email == 'coppolek@gmail.com');
+                    (incoming().role == 'employee' || incoming().email == 'coppolek@gmail.com' || incoming().email == 'admin@admin.com');
       // allow updates to avatar, name etc but not role.
       allow update: if isAuthenticated() && 
                     isValidId(userId) && 

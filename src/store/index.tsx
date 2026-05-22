@@ -3,7 +3,7 @@ import { User, LeaveRequest, LeaveBalance, Role, Worker, Worksite } from '../typ
 import { Language } from '../i18n';
 import { toast } from 'sonner';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { format, startOfWeek } from 'date-fns';
 import { collection, doc, setDoc, getDoc, onSnapshot, query, addDoc, updateDoc, where, getDocs, deleteDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 
@@ -28,7 +28,7 @@ interface AppState {
   deleteWorksite: (id: string) => Promise<void>;
   importWorksites: (worksites: Omit<Worksite, 'id'>[]) => Promise<void>;
   syncWithHR: () => Promise<void>;
-  login: () => Promise<void>;
+  login: (user: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoadingAuth: boolean;
   currentWeekStart: Date;
@@ -80,7 +80,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const newUser: User = {
               id: user.uid,
               name: user.displayName || 'Unknown',
-              role: user.email === 'coppolek@gmail.com' ? 'manager' : 'employee', // Temporary admin check
+              role: (user.email === 'coppolek@gmail.com' || user.email === 'admin@admin.com') ? 'manager' : 'employee', // Temporary admin check
               department: 'General',
               avatar: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`,
               email: user.email || ''
@@ -147,9 +147,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubJolly();
   }, [currentUser, currentWeekStart]);
 
-  const login = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+  const login = async (user: string, pass: string) => {
+    try {
+      const email = user === 'admin' ? 'admin@admin.com' : user;
+      const pwd = pass === 'admin' ? 'admin123' : pass;
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          await createUserWithEmailAndPassword(auth, email, pwd);
+        } else {
+          throw err;
+        }
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Errore durante il login');
+    }
   };
 
   const logout = async () => {
